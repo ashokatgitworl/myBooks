@@ -1,6 +1,8 @@
 echo "__pycache__/
 *.pyc
 .env
+mainApp-bkp.py
+Streamlitapp.py
 .venv/
 *.log
 .DS_Store

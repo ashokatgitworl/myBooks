@@ -7,7 +7,7 @@ from paths import DATA_DIR
 from langchain_core.tools import tool
 import torch
 import chromadb
-from paths import VECTOR_DB_DIR
+from paths import VECTOR_DB_DIR,VECTOR_DB_DIR
 from langchain_huggingface import HuggingFaceEmbeddings
 
 
@@ -142,7 +142,7 @@ def env_content(dir_path: str) -> str:
 @tool
 def retrieve_relevant_documents(    query: str,
     n_results: int = 5,
-    threshold: float = 0.3,
+    threshold: float = 0.5,
 ) -> list[str]: 
     """
     Query the ChromaDB database with a string query.
@@ -150,7 +150,7 @@ def retrieve_relevant_documents(    query: str,
     Args:
         query (str): The search query string
         n_results (int): Number of results to return (default: 5)
-        threshold (float): Threshold for the cosine similarity score (default: 0.3)
+        threshold (float): Threshold for the cosine similarity score (default: 0.5)
 
     Returns:
         dict: Query results containing ids, documents, distances, and metadata
@@ -164,6 +164,8 @@ def retrieve_relevant_documents(    query: str,
     # Embed the query using the same model used for documents
     # logging.info("Embedding query...")
     # Ashok 1
+    # print(f"inside retrieve_relevant_documents tool with query step1 : {query}")
+
     def embed_documents(documents: list[str]) -> list[list[float]]:
         """
         Embed documents using a model.
@@ -184,9 +186,10 @@ def retrieve_relevant_documents(    query: str,
     # logging.info("Querying collection...")
     # Query the collection
     query_embedding = embed_documents([query])[0]  # Get the first (and only) embedding
+    # print(f"inside retrieve_relevant_documents tool with query step2 : {query_embedding}")
    #ashok 2
     def get_db_collection(
-        persist_directory: str = './vector_db',
+        persist_directory: str = VECTOR_DB_DIR,
         collection_name: str = "publications",
     ) -> chromadb.Collection:
         """
@@ -222,7 +225,7 @@ def retrieve_relevant_documents(    query: str,
             relevant_results["ids"].append(results["ids"][0][i])
             relevant_results["documents"].append(results["documents"][0][i])
             relevant_results["distances"].append(results["distances"][0][i])
-
+ 
     return relevant_results["documents"]
 
 

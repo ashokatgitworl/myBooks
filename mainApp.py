@@ -8,6 +8,7 @@ from tools import get_all_tools
 from langchain_core.messages import ToolMessage
 from llm import get_llm
 from utils import load_config
+import streamlit as st
 
 # from guardrails import Guard, OnFailAction
 # from guardrails.hub import ToxicLanguage, UnusualPrompt
@@ -123,17 +124,32 @@ def execute_tool_call(tool_call: Dict[str, Any], tool_registry: Dict[str, Any]) 
 
 def main():
 
-    print("LangGraph Chatbot with Custom Tools")
-    print("Type 'exit' or 'quit' to end the session.")
+# Streamlit  -begin
+# Page configuration
+    st.set_page_config(
+        page_title="AI Chatbot Assistant",
+        page_icon="🤖",
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
+# Main title and description
+    st.title("🤖 AI Chatbot Assistant")
+    st.markdown("Ask me anything and I'll help you with intelligent responses!")
 
-    # Create the graph
+     # Initialize chat history in session state
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+
+ # Display chat messages from history on app rerun
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+  # Create the graph
     app = create_graph()
-
-    # Display available tools
+  # get available tools
     tool_registry = create_tool_registry()
-    print(f"Available tools: {', '.join(tool_registry.keys())}\n")
-
-    # System message with dynamic tool information
+     
+  # System message with dynamic tool information
     tool_descriptions = "\n".join(
         [f"- {name}: {tool.description}" for name, tool in tool_registry.items()]
     )
@@ -142,35 +158,108 @@ def main():
 You have access to the following tools:
 {tool_descriptions}
 
-Use these tools when appropriate to help answer questions."""
+Use these tools when appropriate to help answer questions.""" 
 
-    # Initialize conversation state
+
+# Initialize conversation state
     initial_state = {"messages": [SystemMessage(content=system_content)]}
+ 
+# Accept user input
+    if prompt := st.chat_input("What would you like to know?"):
+        st.session_state.messages.append({"role": "user", "content": prompt})
 
-    try:
-        while True:
-            user_input = input("You: ")
-            if user_input.strip().lower() in {"exit", "quit"}:
-                print("👋 Goodbye!")
-                break
+        with st.chat_message("user"):
+            st.markdown(prompt)
+         
+         # Add user message to state
+            initial_state["messages"].append(HumanMessage(content=prompt))
 
-            # validate_input(user_input)
-            # Add user message to state
-            initial_state["messages"].append(HumanMessage(content=user_input))
+        with st.chat_message("assistant"):
+            with st.spinner("Thinking..."):
+                # Run the graph
+                result = app.invoke(initial_state)
+                # Update state with results
+                initial_state["messages"] = result["messages"]
+                # Display the final response
+                last_message = result["messages"][-1]
+                if hasattr(last_message, "content") and last_message.content:
+                # response = get_ai_responseSLIT(prompt, llm)
+                    st.markdown(last_message.content)
 
-            # Run the graph
-            result = app.invoke(initial_state)
+        st.session_state.messages.append({"role": "assistant", "content": result})
+# Sidebar for additional features
+    with st.sidebar:
+        st.markdown("### About This App")
+        st.markdown("This AI chatbot is powered by:")
+        st.markdown("- **Groq** for fast LLM inference")
+        st.markdown("- **LangChain** for AI orchestration")
+        st.markdown("- **Streamlit** for the beautiful UI")
 
-            # Update state with results
-            initial_state["messages"] = result["messages"]
+        st.markdown("---")
+        st.markdown("### Chat Controls")
 
-            # Display the final response
-            last_message = result["messages"][-1]
-            if hasattr(last_message, "content") and last_message.content:
-                print(f"Bot: {last_message.content}\n")
+        if st.button("🗑️ Clear Chat History", use_container_width=True):
+            st.session_state.messages = []
+            st.rerun()
 
-    except KeyboardInterrupt:
-        print("\n👋 Session terminated.")
+        st.markdown("---")
+        st.markdown("### Stats")
+        st.metric("Messages in Chat", len(st.session_state.messages))
+
+        if st.session_state.messages:
+            user_messages = len([msg for msg in st.session_state.messages if msg["role"] == "user"])
+            st.metric("Questions Asked", user_messages)
+
+# Streamlit -end
+# commwts -beg
+    # print("LangGraph Chatbot with Custom Tools")
+    # print("Type 'exit' or 'quit' to end the session.")
+# Comment - end
+    # Create the graph
+    # app = create_graph()
+
+    # Display available tools
+    # tool_registry = create_tool_registry()
+    # print(f"Available tools: {', '.join(tool_registry.keys())}\n")
+
+    # System message with dynamic tool information
+#     tool_descriptions = "\n".join(
+#         [f"- {name}: {tool.description}" for name, tool in tool_registry.items()]
+#     )
+#     system_content = f"""You are a helpful AI assistant. Remember the previous messages in this conversation. 
+
+# You have access to the following tools:
+# {tool_descriptions}
+
+# Use these tools when appropriate to help answer questions."""
+
+   # Initialize conversation state
+    # initial_state = {"messages": [SystemMessage(content=system_content)]}
+ 
+    # try:
+    #     while True:
+    #         user_input = input("You: ")
+    #         if user_input.strip().lower() in {"exit", "quit"}:
+    #             print("👋 Goodbye!")
+    #             break
+
+    #         # validate_input(user_input)
+    #         # Add user message to state
+    #         initial_state["messages"].append(HumanMessage(content=user_input))
+
+    #         # Run the graph
+    #         result = app.invoke(initial_state)
+
+    #         # Update state with results
+    #         initial_state["messages"] = result["messages"]
+
+    #         # Display the final response
+    #         last_message = result["messages"][-1]
+    #         if hasattr(last_message, "content") and last_message.content:
+    #             print(f"Bot: {last_message.content}\n")
+
+    # except KeyboardInterrupt:
+    #     print("\n👋 Session terminated.")
 
 
 if __name__ == "__main__":
